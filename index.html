@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notes App</title>
+  </head>
+  <body>
+    <div
+      style="
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        justify-content: space-between;
+        align-items: center;
+      "
+    >
+      <div style="font-size: 27px">Notes App</div>
+      <div>
+        <input id="searchValue" type="text" />
+        <button onclick="searchNotes('searchValue')">Search</button>
+      </div>
+    </div>
+    <div style="margin-top: 1rem">
+      <input id="newNoteValue" type="text" />
+      <button onclick="createNote('newNoteValue')">Create Note</button>
+    </div>
+
+    <p id="notesList"></p>
+
+    <script>
+      var notesList = []
+      var addNoteFlag = null
+
+      function getValue(tagId) {
+        let value = document.getElementById(tagId).value
+        document.getElementById(tagId).value = ""
+        return value
+      }
+
+      function createNote(tagId, parentId = null) {
+        let id = Date.now()
+        let text = getValue(tagId)
+        notesList.push({ id, text, childrenIds: [], parentId })
+
+        showNotes()
+      }
+
+      function deleteNote(elementId) {
+        let elementIndex = notesList.findIndex(note => note.id === elementId)
+        let childrenIndexs = notesList[elementIndex].childrenIds
+        let parentIndex = notesList.findIndex(
+          note => note.id === notesList[elementIndex].parentId
+        )
+
+        notesList = notesList.filter(note => !childrenIndexs.includes(note.id))
+        notesList =
+          parentIndex === -1
+            ? notesList
+            : [
+                ...notesList.slice(0, parentIndex),
+                {
+                  ...notesList[parentIndex],
+                  childrenIds: [
+                    ...notesList[parentIndex].childrenIds.filter(
+                      id => id !== notesList[elementIndex].id
+                    )
+                  ]
+                },
+                ...notesList.slice(parentIndex + 1)
+              ]
+
+        notesList = [
+          ...notesList.slice(0, elementIndex),
+          ...notesList.slice(elementIndex + 1)
+        ]
+
+        showNotes()
+      }
+
+      function addNote(parentId) {
+        let id = Date.now()
+        let text = getValue("addNote" + parentId)
+        let index = notesList.findIndex(note => note.id === parentId)
+        notesList = [
+          ...notesList.slice(0, index),
+          {
+            ...notesList[index],
+            childrenIds: [...notesList[index].childrenIds, id]
+          },
+          ...notesList.slice(index + 1)
+        ]
+        notesList.push({ id, text, childrenIds: [], parentId })
+        addNoteFlag = null
+        showNotes()
+      }
+
+      function searchNotes(tagId) {
+        let searchValue = getValue(tagId)
+        showNotes(searchValue)
+      }
+
+      function showNotes(searchValue = "") {
+        let notesView = ""
+        notesList.forEach(note => {
+          notesView += notesTemplate(note, searchValue)
+        })
+
+        document.getElementById("notesList").innerHTML = notesView
+      }
+
+      function notesTemplate(note, searchValue, parentId = null) {
+        if (
+          (searchValue === "" || note.text.includes(searchValue)) &&
+          note.parentId === parentId
+        ) {
+          return `<div id=${note.id} style="margin-left:1rem;">
+                <div style="margin:1rem 0px 0.7rem">${note.text}</div>
+                <div style="display:flex; flex-direction:row;">
+                    <button onclick="(function(){addNoteFlag=${
+                      note.id
+                    }; showNotes()})()">New Note</button>
+                    <button style="margin-left:1rem" onclick="deleteNote(${
+                      note.id
+                    })">Delete</button>
+                </div>
+                <div style="display:${
+                  addNoteFlag === note.id ? "block" : "none"
+                }"> <input id="addNote${
+            note.id
+          }" type="text"/> <button onclick="addNote(${
+            note.id
+          })" > Add Note</button> </div>
+                ${note.childrenIds.map(child => {
+                  let index = notesList.findIndex(note => note.id === child)
+                  return notesTemplate(
+                    notesList[index],
+                    searchValue,
+                    notesList[index].parentId
+                  )
+                })}
+            </div>`
+        } else return ""
+      }
+    </script>
+  </body>
+</html>
